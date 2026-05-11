@@ -9,6 +9,9 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@capacitor/android": "^8.3.3",
+    "@capacitor/cli": "^7.6.4",
+    "@capacitor/core": "^8.3.3",
     "phaser": "^3.90.0"
   },
   "devDependencies": {
