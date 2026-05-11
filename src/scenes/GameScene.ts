@@ -1,7 +1,9 @@
 import Phaser from 'phaser';
 import { Ball } from '../entities/Ball';
 import { PlayerPaddle } from '../entities/PlayerPaddle';
-import { SoundManager } from '../game/SoundManager';
+import { AudioManager } from '../game/AudioManager';
+import { ProgressionManager, type StageModifier } from '../game/ProgressionManager';
+import { type RunResult, SaveManager } from '../game/SaveManager';
 import {
   BALL,
   BALL_TYPES,
@@ -13,37 +15,43 @@ import {
   GAME_WIDTH,
   PADDLE,
 } from '../game/gameSettings';
+import { THEMES, type Theme } from '../game/themes';
+import { AnimatedBackground } from '../ui/AnimatedBackground';
 import { Hud } from '../ui/Hud';
+import { SceneButton } from '../ui/SceneButton';
 
 const TEXTURE_KEYS = {
   paddle: 'generated-paddle',
   particle: 'generated-particle',
 } as const;
 
-type AmbientStar = Phaser.GameObjects.Arc & {
-  driftSpeed: number;
-  parallax: number;
-};
-
 export class GameScene extends Phaser.Scene {
   private paddle!: PlayerPaddle;
   private balls!: Phaser.Physics.Arcade.Group;
   private hud!: Hud;
-  private soundManager!: SoundManager;
+  private audio!: AudioManager;
+  private progression = new ProgressionManager();
+  private theme!: Theme;
+  private background!: AnimatedBackground;
   private catchEmitter!: Phaser.GameObjects.Particles.ParticleEmitter;
   private damageEmitter!: Phaser.GameObjects.Particles.ParticleEmitter;
   private flashOverlay!: Phaser.GameObjects.Rectangle;
-  private vignette!: Phaser.GameObjects.Rectangle;
-  private ambientStars: AmbientStar[] = [];
+  private fogOverlay!: Phaser.GameObjects.Rectangle;
+  private stageText!: Phaser.GameObjects.Text;
+  private pauseButton!: SceneButton;
+  private pauseOverlay!: Phaser.GameObjects.Container;
   private targetX = GAME_WIDTH / 2;
   private score = 0;
   private lives = DIFFICULTY.startingLives;
   private combo = 1;
+  private longestComboThisRun = 1;
+  private ballsCaughtThisRun = 0;
+  private survivalTime = 0;
   private ballSpeed: number = DIFFICULTY.initialBallSpeed;
   private spawnInterval: number = DIFFICULTY.initialSpawnIntervalMs;
   private spawnAccumulator = 0;
-  private elapsedSeconds = 0;
   private isGameOver = false;
+  private isPaused = false;
 
   constructor() {
     super('GameScene');
@@ -55,6 +63,9 @@ export class GameScene extends Phaser.Scene {
   }
 
   create(): void {
+    const save = SaveManager.load();
+
+    this.theme = THEMES[save.settings.selectedTheme];
     this.cameras.main.setBackgroundColor(GAME_BACKGROUND_COLOR);
     this.createGeneratedTextures();
     this.createBackground();
@@ -63,7 +74,8 @@ export class GameScene extends Phaser.Scene {
 
     this.balls = this.physics.add.group({ allowGravity: false });
     this.hud = new Hud(this);
-    this.soundManager = new SoundManager(this);
+    this.audio = new AudioManager(this);
+    this.createPauseMenu();
 
     this.physics.add.overlap(this.paddle, this.balls, this.handleCatch, undefined, this);
     this.setupPointerControls();
@@ -71,7 +83,14 @@ export class GameScene extends Phaser.Scene {
   }
 
   update(_time: number, delta: number): void {
-    this.updateBackground(delta);
+    const parallax = (this.targetX - GAME_WIDTH / 2) / GAME_WIDTH;
+
+    this.background.update(delta, parallax * 0.25);
+
+    if (this.isPaused) {
+      return;
+    }
+
     this.paddle.moveToward(this.targetX, delta);
 
     if (this.isGameOver) {
@@ -80,6 +99,7 @@ export class GameScene extends Phaser.Scene {
 
     this.updateDifficulty(delta);
     this.updateSpawning(delta);
+    this.updateBallMotion(_time);
     this.keepBallsFalling();
     this.checkMissedBalls();
   }
@@ -99,21 +119,29 @@ export class GameScene extends Phaser.Scene {
     this.ballSpeed = DIFFICULTY.initialBallSpeed;
     this.spawnInterval = DIFFICULTY.initialSpawnIntervalMs;
     this.spawnAccumulator = 0;
-    this.elapsedSeconds = 0;
+    this.longestComboThisRun = 1;
+    this.ballsCaughtThisRun = 0;
+    this.survivalTime = 0;
     this.isGameOver = false;
+    this.isPaused = false;
     this.targetX = GAME_WIDTH / 2;
+    this.progression.reset();
 
     this.physics.resume();
     this.cameras.main.setAlpha(1);
     this.balls.clear(true, true);
     this.paddle.setFrozen(false);
+    this.paddle.setGameplayWidthScale(1);
     this.paddle.resetPosition();
+    this.pauseOverlay.setVisible(false);
+    this.pauseButton.setVisible(true);
+    this.fogOverlay.setAlpha(0);
     this.hud.resetLogo();
     this.hud.setScore(this.score);
     this.hud.setLives(this.lives);
     this.hud.setCombo(this.combo);
     this.hud.hideGameOver();
-    this.soundManager.playRestart();
+    this.audio.playUi();
 
     this.time.delayedCall(160, () => this.hud.shrinkLogo());
 
@@ -124,14 +152,25 @@ export class GameScene extends Phaser.Scene {
   }
 
   updateDifficulty(delta: number): void {
-    this.elapsedSeconds += delta / 1000;
+    this.survivalTime += delta / 1000;
+    const newModifier = this.progression.update(delta);
+    const progressionState = this.progression.getState();
+
+    if (newModifier !== undefined) {
+      this.showStageModifier(newModifier);
+      this.applyStageModifier(newModifier);
+    }
+
     this.ballSpeed = Phaser.Math.Clamp(
-      DIFFICULTY.initialBallSpeed + this.elapsedSeconds * DIFFICULTY.speedIncreasePerSecond,
+      (DIFFICULTY.initialBallSpeed + progressionState.elapsedSeconds * DIFFICULTY.speedIncreasePerSecond) *
+        this.progression.getSpeedMultiplier(),
       DIFFICULTY.initialBallSpeed,
       DIFFICULTY.maxBallSpeed,
     );
     this.spawnInterval = Phaser.Math.Clamp(
-      DIFFICULTY.initialSpawnIntervalMs - this.elapsedSeconds * DIFFICULTY.spawnIntervalDecreasePerSecond,
+      (DIFFICULTY.initialSpawnIntervalMs -
+        progressionState.elapsedSeconds * DIFFICULTY.spawnIntervalDecreasePerSecond) *
+        this.progression.getSpawnMultiplier(),
       DIFFICULTY.minSpawnIntervalMs,
       DIFFICULTY.initialSpawnIntervalMs,
     );
@@ -145,6 +184,7 @@ export class GameScene extends Phaser.Scene {
 
     this.balls.add(ball);
     ball.startFall(x, y, this.ballSpeed * speedMultiplier);
+    ball.setZigzag(this.progression.has('zigzag'));
     this.tweens.add({
       targets: ball,
       scale: { from: 0.72, to: 1 },
@@ -163,10 +203,23 @@ export class GameScene extends Phaser.Scene {
   }
 
   private pickBallType(): BallType {
-    const totalWeight = Object.values(BALL_TYPES).reduce((sum, settings) => sum + settings.weight, 0);
+    const entries = (Object.entries(BALL_TYPES) as Array<[BallType, (typeof BALL_TYPES)[BallType]]>).filter(
+      ([type]) => {
+        if (type === 'damage') {
+          return this.progression.canSpawnDamageBalls();
+        }
+
+        if (type === 'bonus') {
+          return this.progression.canSpawnBonusBalls();
+        }
+
+        return true;
+      },
+    );
+    const totalWeight = entries.reduce((sum, [, settings]) => sum + settings.weight, 0);
     let roll = Phaser.Math.Between(1, totalWeight);
 
-    for (const [type, settings] of Object.entries(BALL_TYPES) as Array<[BallType, (typeof BALL_TYPES)[BallType]]>) {
+    for (const [type, settings] of entries) {
       roll -= settings.weight;
 
       if (roll <= 0) {
@@ -228,44 +281,19 @@ export class GameScene extends Phaser.Scene {
   }
 
   private createBackground(): void {
-    this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, COLORS.background);
-
-    this.vignette = this.add
-      .rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, COLORS.backgroundSoft, 0.16)
-      .setDepth(0);
-
-    for (let i = 0; i < 60; i += 1) {
-      const star = this.add
-        .circle(
-          Phaser.Math.Between(28, GAME_WIDTH - 28),
-          Phaser.Math.Between(120, GAME_HEIGHT - 160),
-          Phaser.Math.Between(2, 6),
-          COLORS.cyanBall,
-          Phaser.Math.FloatBetween(0.1, 0.34),
-        )
-        .setDepth(1) as AmbientStar;
-
-      star.driftSpeed = Phaser.Math.FloatBetween(5, 24);
-      star.parallax = Phaser.Math.FloatBetween(0.35, 1.2);
-      this.ambientStars.push(star);
-    }
-  }
-
-  private updateBackground(delta: number): void {
-    const dt = delta / 1000;
-    const pointerOffset = (this.targetX - GAME_WIDTH / 2) / GAME_WIDTH;
-
-    this.vignette.setAlpha(0.12 + Math.sin(this.time.now / 1200) * 0.025);
-
-    for (const star of this.ambientStars) {
-      star.y += star.driftSpeed * dt;
-      star.x += pointerOffset * star.parallax * 0.45;
-
-      if (star.y > GAME_HEIGHT + 20) {
-        star.y = Phaser.Math.Between(-90, -20);
-        star.x = Phaser.Math.Between(28, GAME_WIDTH - 28);
-      }
-    }
+    this.background = new AnimatedBackground(this, this.theme, 62);
+    this.fogOverlay = this.add
+      .rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x000000, 0)
+      .setDepth(43);
+    this.stageText = this.add
+      .text(GAME_WIDTH / 2, 340, '', {
+        fontFamily: 'Arial, Helvetica, sans-serif',
+        fontSize: '38px',
+        color: COLORS.goldText,
+      })
+      .setOrigin(0.5)
+      .setAlpha(0)
+      .setDepth(60);
   }
 
   private createPlayer(): void {
@@ -307,17 +335,61 @@ export class GameScene extends Phaser.Scene {
 
   private setupPointerControls(): void {
     this.input.on('pointermove', (pointer: Phaser.Input.Pointer) => {
-      this.targetX = pointer.x;
-    });
-
-    this.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
-      if (this.isGameOver) {
-        this.resetGame();
+      if (this.isPaused) {
         return;
       }
 
       this.targetX = pointer.x;
     });
+
+    this.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
+      if (this.isPaused || this.isGameOver) {
+        return;
+      }
+
+      this.targetX = pointer.x;
+    });
+  }
+
+  private createPauseMenu(): void {
+    this.pauseButton = new SceneButton(this, GAME_WIDTH - 92, 154, 'II', () => this.pauseGame(), 104);
+    this.pauseOverlay = this.add.container(0, 0).setDepth(90).setVisible(false);
+
+    const blocker = this.add
+      .rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x000000, 0.68)
+      .setInteractive();
+    const title = this.add
+      .text(GAME_WIDTH / 2, 520, 'PAUSED', {
+        fontFamily: 'Arial, Helvetica, sans-serif',
+        fontSize: '74px',
+        color: COLORS.text,
+      })
+      .setOrigin(0.5);
+    const resume = new SceneButton(this, GAME_WIDTH / 2, 760, 'RESUME', () => this.resumeGame(), 470);
+    const restart = new SceneButton(this, GAME_WIDTH / 2, 880, 'RESTART', () => this.resetGame(), 470);
+    const menu = new SceneButton(this, GAME_WIDTH / 2, 1000, 'MAIN MENU', () => this.scene.start('MainMenuScene'), 470);
+
+    this.pauseOverlay.add([blocker, title, resume, restart, menu]);
+  }
+
+  private pauseGame(): void {
+    if (this.isGameOver) {
+      return;
+    }
+
+    this.isPaused = true;
+    this.physics.pause();
+    this.pauseOverlay.setVisible(true);
+    this.pauseButton.setVisible(false);
+    this.audio.playUi();
+  }
+
+  private resumeGame(): void {
+    this.isPaused = false;
+    this.physics.resume();
+    this.pauseOverlay.setVisible(false);
+    this.pauseButton.setVisible(true);
+    this.audio.playUi();
   }
 
   private handleCatch: Phaser.Types.Physics.Arcade.ArcadePhysicsCallback = (_paddleObject, ballObject): void => {
@@ -329,7 +401,8 @@ export class GameScene extends Phaser.Scene {
 
     if (ball.ballType === 'damage') {
       this.damageEmitter.explode(24, ball.x, ball.y);
-      this.soundManager.playDamage();
+      this.audio.playDamage();
+      this.audio.vibrate([25, 30, 25]);
       this.resetCombo();
       ball.destroy();
       this.loseLife(true);
@@ -339,7 +412,9 @@ export class GameScene extends Phaser.Scene {
     const earned = ball.points * this.combo;
 
     this.score += earned;
+    this.ballsCaughtThisRun += 1;
     this.combo += ball.comboGain;
+    this.longestComboThisRun = Math.max(this.longestComboThisRun, this.combo);
     this.hud.setScore(this.score);
     this.hud.setCombo(this.combo);
     this.hud.showFloatingScore(ball.x, ball.y, earned, ball.ballType === 'bonus' ? COLORS.goldText : COLORS.text);
@@ -348,7 +423,8 @@ export class GameScene extends Phaser.Scene {
     this.cameras.main.shake(ball.ballType === 'bonus' ? 85 : 50, ball.ballType === 'bonus' ? 0.0035 : 0.002);
     this.catchEmitter.setParticleTint(BALL_TYPES[ball.ballType].color);
     this.catchEmitter.explode(ball.ballType === 'bonus' ? 34 : 22, ball.x, ball.y);
-    this.soundManager.playCatch(ball.ballType, this.combo);
+    this.audio.playCatch(ball.ballType, this.combo);
+    this.audio.vibrate(ball.ballType === 'bonus' ? 18 : 8);
     ball.destroy();
   };
 
@@ -384,6 +460,16 @@ export class GameScene extends Phaser.Scene {
     });
   }
 
+  private updateBallMotion(time: number): void {
+    this.balls.children.each((child: Phaser.GameObjects.GameObject) => {
+      if (child instanceof Ball) {
+        child.updateMotion(time);
+      }
+
+      return true;
+    });
+  }
+
   private keepBallsFalling(): void {
     this.balls.children.each((child: Phaser.GameObjects.GameObject) => {
       if (child instanceof Ball) {
@@ -403,7 +489,7 @@ export class GameScene extends Phaser.Scene {
     this.hud.setLives(Math.max(this.lives, 0));
     this.flashScreen(COLORS.danger, hitDamageBall ? 0.34 : 0.22);
     this.cameras.main.shake(hitDamageBall ? 170 : 120, hitDamageBall ? 0.008 : 0.005);
-    this.soundManager.playDamage();
+    this.audio.playDamage();
 
     if (this.lives <= 0) {
       this.endGame();
@@ -431,8 +517,10 @@ export class GameScene extends Phaser.Scene {
     this.isGameOver = true;
     this.flashScreen(COLORS.white, 0.28);
     this.cameras.main.shake(260, 0.01);
-    this.soundManager.playGameOver();
+    this.audio.playGameOver();
+    this.audio.vibrate([50, 40, 80]);
     this.paddle.setFrozen(true);
+    this.pauseButton.setVisible(false);
 
     this.balls.children.each((child: Phaser.GameObjects.GameObject) => {
       if (child instanceof Ball) {
@@ -443,5 +531,57 @@ export class GameScene extends Phaser.Scene {
     });
 
     this.hud.showGameOver(this.score);
+    this.time.delayedCall(720, () => {
+      const result: RunResult = {
+        score: this.score,
+        ballsCaught: this.ballsCaughtThisRun,
+        survivalTime: this.survivalTime,
+        longestCombo: this.longestComboThisRun,
+      };
+
+      this.scene.start('GameOverScene', result);
+    });
+  }
+
+  private showStageModifier(modifier: StageModifier): void {
+    this.stageText.setText(this.formatModifier(modifier));
+    this.stageText.setAlpha(0).setScale(0.9);
+    this.tweens.add({
+      targets: this.stageText,
+      alpha: 1,
+      scale: 1,
+      duration: 220,
+      ease: 'Back.easeOut',
+      yoyo: true,
+      hold: 900,
+    });
+  }
+
+  private applyStageModifier(modifier: StageModifier): void {
+    if (modifier === 'shrinking-paddle') {
+      this.paddle.setGameplayWidthScale(0.74);
+    }
+
+    if (modifier === 'fog') {
+      this.tweens.add({
+        targets: this.fogOverlay,
+        alpha: 0.32,
+        duration: 700,
+        ease: 'Sine.easeOut',
+      });
+    }
+  }
+
+  private formatModifier(modifier: StageModifier): string {
+    const labels: Record<StageModifier, string> = {
+      'faster-balls': 'FASTER BALLS',
+      'danger-balls': 'DANGER BALLS',
+      'shrinking-paddle': 'PADDLE SHRINK',
+      'double-spawn': 'DOUBLE RUSH',
+      fog: 'DARKNESS MODE',
+      zigzag: 'ZIGZAG BALLS',
+    };
+
+    return labels[modifier];
   }
 }

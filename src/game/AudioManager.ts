@@ -1,29 +1,38 @@
 import Phaser from 'phaser';
+import { SaveManager } from './SaveManager';
 import type { BallType } from './gameSettings';
 
-// Placeholder sound facade. Real audio assets can be wired here without
-// touching gameplay code, keeping effects calls simple and centralized.
-export class SoundManager {
+export class AudioManager {
   constructor(private readonly scene: Phaser.Scene) {}
 
   playCatch(type: BallType, combo: number): void {
-    this.playPlaceholder(type === 'bonus' ? 760 : 560 + combo * 18, 0.035);
+    this.playPlaceholder(type === 'bonus' ? 760 : 540 + combo * 14, 0.035, 0.8);
   }
 
   playDamage(): void {
-    this.playPlaceholder(180, 0.055);
+    this.playPlaceholder(165, 0.06, 1);
+  }
+
+  playUi(): void {
+    this.playPlaceholder(420, 0.03, 0.45);
   }
 
   playGameOver(): void {
-    this.playPlaceholder(110, 0.08);
+    this.playPlaceholder(100, 0.1, 1);
   }
 
-  playRestart(): void {
-    this.playPlaceholder(440, 0.04);
+  vibrate(pattern: number | number[]): void {
+    if (!SaveManager.load().settings.vibrationEnabled || !('vibrate' in navigator)) {
+      return;
+    }
+
+    navigator.vibrate(pattern);
   }
 
-  private playPlaceholder(frequency: number, durationSeconds: number): void {
-    if (!(this.scene.sound instanceof Phaser.Sound.WebAudioSoundManager)) {
+  private playPlaceholder(frequency: number, durationSeconds: number, intensity: number): void {
+    const { sfxVolume } = SaveManager.load().settings;
+
+    if (sfxVolume <= 0 || !(this.scene.sound instanceof Phaser.Sound.WebAudioSoundManager)) {
       return;
     }
 
@@ -40,7 +49,7 @@ export class SoundManager {
     oscillator.type = 'sine';
     oscillator.frequency.setValueAtTime(frequency, now);
     gain.gain.setValueAtTime(0.0001, now);
-    gain.gain.exponentialRampToValueAtTime(0.04, now + 0.01);
+    gain.gain.exponentialRampToValueAtTime(0.045 * sfxVolume * intensity, now + 0.01);
     gain.gain.exponentialRampToValueAtTime(0.0001, now + durationSeconds);
 
     oscillator.connect(gain);

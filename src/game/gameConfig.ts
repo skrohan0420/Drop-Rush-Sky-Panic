@@ -1,5 +1,9 @@
 import Phaser from 'phaser';
+import { GameOverScene } from '../scenes/GameOverScene';
 import { GameScene } from '../scenes/GameScene';
+import { MainMenuScene } from '../scenes/MainMenuScene';
+import { SettingsScene } from '../scenes/SettingsScene';
+import { StatsScene } from '../scenes/StatsScene';
 import { GAME_BACKGROUND_COLOR, GAME_HEIGHT, GAME_WIDTH } from './gameSettings';
 
 export { GAME_BACKGROUND_COLOR, GAME_HEIGHT, GAME_WIDTH } from './gameSettings';
@@ -12,7 +16,7 @@ export const gameConfig: Phaser.Types.Core.GameConfig = {
   backgroundColor: GAME_BACKGROUND_COLOR,
   width: GAME_WIDTH,
   height: GAME_HEIGHT,
-  scene: [GameScene],
+  scene: [MainMenuScene, GameScene, GameOverScene, SettingsScene, StatsScene],
   scale: {
     mode: Phaser.Scale.FIT,
     autoCenter: Phaser.Scale.CENTER_BOTH,

@@ -6,6 +6,9 @@ export class Ball extends Phaser.Physics.Arcade.Image {
   readonly points: number;
   readonly comboGain: number;
   private fallSpeed = 0;
+  private zigzagAmplitude = 0;
+  private zigzagSpeed = 0;
+  private baseX = 0;
 
   constructor(scene: Phaser.Scene, x: number, y: number, ballType: BallType) {
     const settings = BALL_TYPES[ballType];
@@ -31,6 +34,7 @@ export class Ball extends Phaser.Physics.Arcade.Image {
     const body = this.body as Phaser.Physics.Arcade.Body;
 
     this.fallSpeed = speed;
+    this.baseX = x;
     this.setPosition(x, y);
     this.setActive(true);
     this.setVisible(true);
@@ -49,6 +53,20 @@ export class Ball extends Phaser.Physics.Arcade.Image {
       body.enable = true;
       body.setVelocity(0, intendedSpeed);
     }
+  }
+
+  setZigzag(enabled: boolean): void {
+    this.zigzagAmplitude = enabled ? Phaser.Math.Between(48, 110) : 0;
+    this.zigzagSpeed = enabled ? Phaser.Math.FloatBetween(0.004, 0.008) : 0;
+    this.baseX = this.x;
+  }
+
+  updateMotion(time: number): void {
+    if (this.zigzagAmplitude <= 0) {
+      return;
+    }
+
+    this.x = this.baseX + Math.sin(time * this.zigzagSpeed + this.y * 0.01) * this.zigzagAmplitude;
   }
 
   freeze(): void {

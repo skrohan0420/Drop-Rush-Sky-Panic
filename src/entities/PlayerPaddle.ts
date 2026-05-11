@@ -5,6 +5,7 @@ export class PlayerPaddle extends Phaser.Physics.Arcade.Image {
   private readonly glow: Phaser.GameObjects.Image;
   private readonly halfWidth = PADDLE.width / 2;
   private currentSpeed = 0;
+  private widthScale = 1;
 
   constructor(scene: Phaser.Scene, x: number, y: number, textureKey: string) {
     super(scene, x, y, textureKey);
@@ -41,8 +42,18 @@ export class PlayerPaddle extends Phaser.Physics.Arcade.Image {
 
   resetPosition(): void {
     this.currentSpeed = 0;
+    this.widthScale = 1;
     this.setPaddleX(GAME_WIDTH / 2);
     this.setScale(1);
+    this.updateGlow();
+  }
+
+  setGameplayWidthScale(widthScale: number): void {
+    const body = this.body as Phaser.Physics.Arcade.Body;
+
+    this.widthScale = widthScale;
+    this.scaleX = widthScale;
+    body.setSize(PADDLE.width * widthScale, PADDLE.height);
     this.updateGlow();
   }
 
@@ -67,7 +78,7 @@ export class PlayerPaddle extends Phaser.Physics.Arcade.Image {
 
   private updateMovementSquash(): void {
     const stretch = Phaser.Math.Clamp(this.currentSpeed / 42, 0, 0.18);
-    const targetScaleX = 1 + stretch;
+    const targetScaleX = this.widthScale + stretch;
     const targetScaleY = 1 - stretch * 0.45;
 
     this.scaleX = Phaser.Math.Linear(this.scaleX, targetScaleX, 0.2);
