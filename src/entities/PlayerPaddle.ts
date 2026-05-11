@@ -3,7 +3,8 @@ import { GAME_WIDTH, PADDLE } from '../game/gameSettings';
 
 export class PlayerPaddle extends Phaser.Physics.Arcade.Image {
   private readonly glow: Phaser.GameObjects.Image;
-  private readonly halfWidth = PADDLE.width / 2;
+  private leftBound = PADDLE.width / 2;
+  private rightBound = GAME_WIDTH - PADDLE.width / 2;
   private currentSpeed = 0;
   private widthScale = 1;
 
@@ -57,6 +58,14 @@ export class PlayerPaddle extends Phaser.Physics.Arcade.Image {
     this.updateGlow();
   }
 
+  setHorizontalBounds(left: number, right: number): void {
+    const halfWidth = (PADDLE.width * this.widthScale) / 2;
+
+    this.leftBound = left + halfWidth;
+    this.rightBound = right - halfWidth;
+    this.setPaddleX(this.x);
+  }
+
   pulse(intensity = 1): void {
     this.scene.tweens.killTweensOf([this, this.glow]);
     this.scene.tweens.add({
@@ -101,6 +110,6 @@ export class PlayerPaddle extends Phaser.Physics.Arcade.Image {
   }
 
   private clampX(x: number): number {
-    return Phaser.Math.Clamp(x, this.halfWidth, GAME_WIDTH - this.halfWidth);
+    return Phaser.Math.Clamp(x, this.leftBound, this.rightBound);
   }
 }

@@ -1,10 +1,11 @@
 import Phaser from 'phaser';
 import { AudioManager } from '../game/AudioManager';
 import { SaveManager, type GameSave } from '../game/SaveManager';
-import { COLORS, GAME_WIDTH } from '../game/gameSettings';
+import { COLORS } from '../game/gameSettings';
 import { THEMES } from '../game/themes';
 import { AnimatedBackground } from '../ui/AnimatedBackground';
 import { SceneButton } from '../ui/SceneButton';
+import { getSafeArea } from '../ui/layout';
 
 export class SettingsScene extends Phaser.Scene {
   private save!: GameSave;
@@ -21,11 +22,12 @@ export class SettingsScene extends Phaser.Scene {
 
   create(): void {
     this.save = SaveManager.load();
+    const safe = getSafeArea(this, 56);
     this.background = new AnimatedBackground(this, THEMES[this.save.settings.selectedTheme], 48);
     this.audio = new AudioManager(this);
 
     this.add
-      .text(GAME_WIDTH / 2, 220, 'SETTINGS', {
+      .text(safe.centerX, safe.top + 170, 'SETTINGS', {
         fontFamily: 'Arial, Helvetica, sans-serif',
         fontSize: '72px',
         color: COLORS.text,
@@ -33,12 +35,14 @@ export class SettingsScene extends Phaser.Scene {
       .setOrigin(0.5)
       .setDepth(20);
 
-    this.musicButton = new SceneButton(this, GAME_WIDTH / 2, 470, '', () => this.cycleMusic(), 560);
-    this.sfxButton = new SceneButton(this, GAME_WIDTH / 2, 590, '', () => this.cycleSfx(), 560);
-    this.vibrationButton = new SceneButton(this, GAME_WIDTH / 2, 710, '', () => this.toggleVibration(), 560);
-    this.themeButton = new SceneButton(this, GAME_WIDTH / 2, 830, '', () => this.cycleTheme(), 560);
+    const buttonWidth = Math.min(600, safe.width - 70);
 
-    new SceneButton(this, GAME_WIDTH / 2, 1120, 'BACK', () => {
+    this.musicButton = new SceneButton(this, safe.centerX, safe.centerY - 250, '', () => this.cycleMusic(), buttonWidth);
+    this.sfxButton = new SceneButton(this, safe.centerX, safe.centerY - 130, '', () => this.cycleSfx(), buttonWidth);
+    this.vibrationButton = new SceneButton(this, safe.centerX, safe.centerY - 10, '', () => this.toggleVibration(), buttonWidth);
+    this.themeButton = new SceneButton(this, safe.centerX, safe.centerY + 110, '', () => this.cycleTheme(), buttonWidth);
+
+    new SceneButton(this, safe.centerX, safe.bottom - 170, 'BACK', () => {
       this.audio.playUi();
       this.scene.start('MainMenuScene');
     });

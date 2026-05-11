@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { COLORS, GAME_HEIGHT, GAME_WIDTH } from '../game/gameSettings';
+import { getSafeArea } from './layout';
 
 const HUD_FONT = 'Arial, Helvetica, sans-serif';
 
@@ -15,9 +16,10 @@ export class Hud {
 
   constructor(scene: Phaser.Scene) {
     this.scene = scene;
+    const safe = getSafeArea(scene, 42);
 
     this.scoreText = scene.add
-      .text(64, 58, 'SCORE 0', {
+      .text(safe.left, safe.top + 8, 'SCORE 0', {
         fontFamily: HUD_FONT,
         fontSize: '46px',
         color: COLORS.text,
@@ -25,7 +27,7 @@ export class Hud {
       .setDepth(50);
 
     this.livesText = scene.add
-      .text(GAME_WIDTH - 64, 58, 'LIVES 3', {
+      .text(safe.right, safe.top + 8, 'LIVES 3', {
         fontFamily: HUD_FONT,
         fontSize: '46px',
         color: COLORS.text,
@@ -34,7 +36,7 @@ export class Hud {
       .setDepth(50);
 
     this.comboText = scene.add
-      .text(GAME_WIDTH / 2, 72, 'COMBO x1', {
+      .text(safe.centerX, safe.top + 72, 'COMBO x1', {
         fontFamily: HUD_FONT,
         fontSize: '38px',
         color: COLORS.goldText,
@@ -44,7 +46,7 @@ export class Hud {
       .setDepth(50);
 
     this.titleText = scene.add
-      .text(GAME_WIDTH / 2, 150, 'DROP RUSH', {
+      .text(safe.centerX, safe.top + 160, 'DROP RUSH', {
         fontFamily: HUD_FONT,
         fontSize: '76px',
         color: COLORS.text,
@@ -54,7 +56,7 @@ export class Hud {
       .setDepth(8);
 
     this.subtitleText = scene.add
-      .text(GAME_WIDTH / 2, 220, 'SKY PANIC', {
+      .text(safe.centerX, safe.top + 230, 'SKY PANIC', {
         fontFamily: HUD_FONT,
         fontSize: '34px',
         color: COLORS.mutedText,
@@ -140,9 +142,11 @@ export class Hud {
   }
 
   resetLogo(): void {
+    const safe = getSafeArea(this.scene, 42);
+
     this.scene.tweens.killTweensOf([this.titleText, this.subtitleText]);
-    this.titleText.setPosition(GAME_WIDTH / 2, 150).setScale(1).setAlpha(1);
-    this.subtitleText.setPosition(GAME_WIDTH / 2, 220).setScale(1).setAlpha(1);
+    this.titleText.setPosition(safe.centerX, safe.top + 160).setScale(1).setAlpha(1);
+    this.subtitleText.setPosition(safe.centerX, safe.top + 230).setScale(1).setAlpha(1);
   }
 
   showGameOver(score: number): void {

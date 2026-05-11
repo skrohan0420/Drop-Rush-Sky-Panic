@@ -19,6 +19,7 @@ import { THEMES, type Theme } from '../game/themes';
 import { AnimatedBackground } from '../ui/AnimatedBackground';
 import { Hud } from '../ui/Hud';
 import { SceneButton } from '../ui/SceneButton';
+import { getSafeArea, type SafeArea } from '../ui/layout';
 
 const TEXTURE_KEYS = {
   paddle: 'generated-paddle',
@@ -32,6 +33,7 @@ export class GameScene extends Phaser.Scene {
   private audio!: AudioManager;
   private progression = new ProgressionManager();
   private theme!: Theme;
+  private safeArea!: SafeArea;
   private background!: AnimatedBackground;
   private catchEmitter!: Phaser.GameObjects.Particles.ParticleEmitter;
   private damageEmitter!: Phaser.GameObjects.Particles.ParticleEmitter;
@@ -66,6 +68,7 @@ export class GameScene extends Phaser.Scene {
     const save = SaveManager.load();
 
     this.theme = THEMES[save.settings.selectedTheme];
+    this.safeArea = getSafeArea(this, 42);
     this.cameras.main.setBackgroundColor(GAME_BACKGROUND_COLOR);
     this.createGeneratedTextures();
     this.createBackground();
@@ -132,6 +135,7 @@ export class GameScene extends Phaser.Scene {
     this.balls.clear(true, true);
     this.paddle.setFrozen(false);
     this.paddle.setGameplayWidthScale(1);
+    this.paddle.setHorizontalBounds(this.safeArea.left, this.safeArea.right);
     this.paddle.resetPosition();
     this.pauseOverlay.setVisible(false);
     this.pauseButton.setVisible(true);
@@ -178,7 +182,7 @@ export class GameScene extends Phaser.Scene {
 
   private spawnBallAt(y: number, ballType: BallType): void {
     const margin = BALL.radius + 24;
-    const x = Phaser.Math.Between(margin, GAME_WIDTH - margin);
+    const x = Phaser.Math.Between(this.safeArea.left + margin, this.safeArea.right - margin);
     const speedMultiplier = Phaser.Math.FloatBetween(0.92, 1.18);
     const ball = new Ball(this, x, y, ballType);
 
@@ -286,7 +290,7 @@ export class GameScene extends Phaser.Scene {
       .rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x000000, 0)
       .setDepth(43);
     this.stageText = this.add
-      .text(GAME_WIDTH / 2, 340, '', {
+      .text(this.safeArea.centerX, this.safeArea.top + 330, '', {
         fontFamily: 'Arial, Helvetica, sans-serif',
         fontSize: '38px',
         color: COLORS.goldText,
@@ -299,10 +303,11 @@ export class GameScene extends Phaser.Scene {
   private createPlayer(): void {
     this.paddle = new PlayerPaddle(
       this,
-      GAME_WIDTH / 2,
-      GAME_HEIGHT - PADDLE.bottomMargin,
+      this.safeArea.centerX,
+      this.safeArea.bottom - PADDLE.bottomMargin,
       TEXTURE_KEYS.paddle,
     );
+    this.paddle.setHorizontalBounds(this.safeArea.left, this.safeArea.right);
   }
 
   private createEffects(): void {
@@ -352,7 +357,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   private createPauseMenu(): void {
-    this.pauseButton = new SceneButton(this, GAME_WIDTH - 92, 154, 'II', () => this.pauseGame(), 104);
+    this.pauseButton = new SceneButton(this, this.safeArea.right - 54, this.safeArea.top + 116, 'II', () => this.pauseGame(), 104);
     this.pauseOverlay = this.add.container(0, 0).setDepth(90).setVisible(false);
 
     const blocker = this.add
@@ -365,9 +370,10 @@ export class GameScene extends Phaser.Scene {
         color: COLORS.text,
       })
       .setOrigin(0.5);
-    const resume = new SceneButton(this, GAME_WIDTH / 2, 760, 'RESUME', () => this.resumeGame(), 470);
-    const restart = new SceneButton(this, GAME_WIDTH / 2, 880, 'RESTART', () => this.resetGame(), 470);
-    const menu = new SceneButton(this, GAME_WIDTH / 2, 1000, 'MAIN MENU', () => this.scene.start('MainMenuScene'), 470);
+    title.setPosition(this.safeArea.centerX, this.safeArea.centerY - 250);
+    const resume = new SceneButton(this, this.safeArea.centerX, this.safeArea.centerY - 44, 'RESUME', () => this.resumeGame(), 470);
+    const restart = new SceneButton(this, this.safeArea.centerX, this.safeArea.centerY + 76, 'RESTART', () => this.resetGame(), 470);
+    const menu = new SceneButton(this, this.safeArea.centerX, this.safeArea.centerY + 196, 'MAIN MENU', () => this.scene.start('MainMenuScene'), 470);
 
     this.pauseOverlay.add([blocker, title, resume, restart, menu]);
   }

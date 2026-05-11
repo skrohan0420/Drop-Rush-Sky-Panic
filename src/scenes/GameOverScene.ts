@@ -1,10 +1,11 @@
 import Phaser from 'phaser';
 import { AudioManager } from '../game/AudioManager';
 import { SaveManager, type RunResult } from '../game/SaveManager';
-import { COLORS, GAME_WIDTH } from '../game/gameSettings';
+import { COLORS } from '../game/gameSettings';
 import { THEMES } from '../game/themes';
 import { AnimatedBackground } from '../ui/AnimatedBackground';
 import { SceneButton } from '../ui/SceneButton';
+import { getSafeArea } from '../ui/layout';
 
 export class GameOverScene extends Phaser.Scene {
   private background!: AnimatedBackground;
@@ -23,13 +24,14 @@ export class GameOverScene extends Phaser.Scene {
     };
     const result = { ...fallback, ...data };
     const save = SaveManager.recordRun(result);
+    const safe = getSafeArea(this, 56);
 
     this.background = new AnimatedBackground(this, THEMES[save.settings.selectedTheme], 52);
     this.audio = new AudioManager(this);
     this.cameras.main.fadeIn(260, 5, 7, 13);
 
     this.add
-      .text(GAME_WIDTH / 2, 220, 'RUN COMPLETE', {
+      .text(safe.centerX, safe.top + 170, 'RUN COMPLETE', {
         fontFamily: 'Arial, Helvetica, sans-serif',
         fontSize: '66px',
         color: COLORS.text,
@@ -39,8 +41,8 @@ export class GameOverScene extends Phaser.Scene {
 
     this.add
       .text(
-        GAME_WIDTH / 2,
-        430,
+        safe.centerX,
+        safe.top + 360,
         [
           `FINAL SCORE  ${result.score}`,
           `BEST SCORE   ${save.highScore}`,
@@ -58,12 +60,12 @@ export class GameOverScene extends Phaser.Scene {
       .setOrigin(0.5, 0)
       .setDepth(20);
 
-    new SceneButton(this, GAME_WIDTH / 2, 980, 'RETRY', () => {
+    new SceneButton(this, safe.centerX, safe.centerY + 220, 'RETRY', () => {
       this.audio.playUi();
       this.scene.start('GameScene');
     });
 
-    new SceneButton(this, GAME_WIDTH / 2, 1100, 'MAIN MENU', () => {
+    new SceneButton(this, safe.centerX, safe.centerY + 340, 'MAIN MENU', () => {
       this.audio.playUi();
       this.scene.start('MainMenuScene');
     });

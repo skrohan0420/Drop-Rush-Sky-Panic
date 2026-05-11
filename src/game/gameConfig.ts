@@ -18,7 +18,9 @@ export const gameConfig: Phaser.Types.Core.GameConfig = {
   height: GAME_HEIGHT,
   scene: [MainMenuScene, GameScene, GameOverScene, SettingsScene, StatsScene],
   scale: {
-    mode: Phaser.Scale.FIT,
+    // ENVELOP fills tall phones instead of letterboxing. Scene UI uses a
+    // safe-area helper so important controls stay inside the visible crop.
+    mode: Phaser.Scale.ENVELOP,
     autoCenter: Phaser.Scale.CENTER_BOTH,
     width: GAME_WIDTH,
     height: GAME_HEIGHT,

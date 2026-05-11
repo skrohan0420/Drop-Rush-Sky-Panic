@@ -1,10 +1,11 @@
 import Phaser from 'phaser';
 import { AudioManager } from '../game/AudioManager';
 import { SaveManager } from '../game/SaveManager';
-import { GAME_HEIGHT, GAME_WIDTH, COLORS } from '../game/gameSettings';
+import { COLORS } from '../game/gameSettings';
 import { THEMES } from '../game/themes';
 import { AnimatedBackground } from '../ui/AnimatedBackground';
 import { SceneButton } from '../ui/SceneButton';
+import { getSafeArea } from '../ui/layout';
 
 export class MainMenuScene extends Phaser.Scene {
   private background!: AnimatedBackground;
@@ -17,12 +18,13 @@ export class MainMenuScene extends Phaser.Scene {
   create(): void {
     const save = SaveManager.load();
     const theme = THEMES[save.settings.selectedTheme];
+    const safe = getSafeArea(this, 56);
 
     this.background = new AnimatedBackground(this, theme, 72);
     this.audio = new AudioManager(this);
 
     this.add
-      .text(GAME_WIDTH / 2, 300, 'DROP RUSH', {
+      .text(safe.centerX, safe.top + 210, 'DROP RUSH', {
         fontFamily: 'Arial, Helvetica, sans-serif',
         fontSize: '96px',
         color: COLORS.text,
@@ -32,7 +34,7 @@ export class MainMenuScene extends Phaser.Scene {
       .setDepth(20);
 
     this.add
-      .text(GAME_WIDTH / 2, 382, 'SKY PANIC', {
+      .text(safe.centerX, safe.top + 292, 'SKY PANIC', {
         fontFamily: 'Arial, Helvetica, sans-serif',
         fontSize: '38px',
         color: COLORS.mutedText,
@@ -41,7 +43,7 @@ export class MainMenuScene extends Phaser.Scene {
       .setDepth(20);
 
     this.add
-      .text(GAME_WIDTH / 2, 520, `BEST ${save.highScore}`, {
+      .text(safe.centerX, safe.top + 440, `BEST ${save.highScore}`, {
         fontFamily: 'Arial, Helvetica, sans-serif',
         fontSize: '44px',
         color: COLORS.goldText,
@@ -49,12 +51,12 @@ export class MainMenuScene extends Phaser.Scene {
       .setOrigin(0.5)
       .setDepth(20);
 
-    new SceneButton(this, GAME_WIDTH / 2, 760, 'PLAY', () => this.goToGame(), 470);
-    new SceneButton(this, GAME_WIDTH / 2, 880, 'STATS', () => this.goToStats(), 470);
-    new SceneButton(this, GAME_WIDTH / 2, 1000, 'SETTINGS', () => this.goToSettings(), 470);
+    new SceneButton(this, safe.centerX, safe.centerY - 80, 'PLAY', () => this.goToGame(), Math.min(520, safe.width - 80));
+    new SceneButton(this, safe.centerX, safe.centerY + 42, 'STATS', () => this.goToStats(), Math.min(520, safe.width - 80));
+    new SceneButton(this, safe.centerX, safe.centerY + 164, 'SETTINGS', () => this.goToSettings(), Math.min(520, safe.width - 80));
 
     this.add
-      .text(GAME_WIDTH / 2, GAME_HEIGHT - 130, 'Catch cyan and gold. Avoid red.', {
+      .text(safe.centerX, safe.bottom - 90, 'Catch cyan and gold. Avoid red.', {
         fontFamily: 'Arial, Helvetica, sans-serif',
         fontSize: '30px',
         color: COLORS.mutedText,

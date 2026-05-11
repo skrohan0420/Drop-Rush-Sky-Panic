@@ -1,10 +1,11 @@
 import Phaser from 'phaser';
 import { AudioManager } from '../game/AudioManager';
 import { SaveManager } from '../game/SaveManager';
-import { COLORS, GAME_WIDTH } from '../game/gameSettings';
+import { COLORS } from '../game/gameSettings';
 import { THEMES } from '../game/themes';
 import { AnimatedBackground } from '../ui/AnimatedBackground';
 import { SceneButton } from '../ui/SceneButton';
+import { getSafeArea } from '../ui/layout';
 
 export class StatsScene extends Phaser.Scene {
   private background!: AnimatedBackground;
@@ -17,12 +18,13 @@ export class StatsScene extends Phaser.Scene {
   create(): void {
     const save = SaveManager.load();
     const stats = save.stats;
+    const safe = getSafeArea(this, 56);
 
     this.background = new AnimatedBackground(this, THEMES[save.settings.selectedTheme], 48);
     this.audio = new AudioManager(this);
 
     this.add
-      .text(GAME_WIDTH / 2, 220, 'STATISTICS', {
+      .text(safe.centerX, safe.top + 170, 'STATISTICS', {
         fontFamily: 'Arial, Helvetica, sans-serif',
         fontSize: '72px',
         color: COLORS.text,
@@ -32,8 +34,8 @@ export class StatsScene extends Phaser.Scene {
 
     this.add
       .text(
-        GAME_WIDTH / 2,
-        430,
+        safe.centerX,
+        safe.top + 360,
         [
           `GAMES PLAYED  ${stats.gamesPlayed}`,
           `TOTAL CAUGHT  ${stats.totalBallsCaught}`,
@@ -52,7 +54,7 @@ export class StatsScene extends Phaser.Scene {
       .setOrigin(0.5, 0)
       .setDepth(20);
 
-    new SceneButton(this, GAME_WIDTH / 2, 1250, 'BACK', () => {
+    new SceneButton(this, safe.centerX, safe.bottom - 170, 'BACK', () => {
       this.audio.playUi();
       this.scene.start('MainMenuScene');
     });
