@@ -1,43 +1,53 @@
 # Drop Rush: Sky Panic
 
-A fast-paced 2D arcade survival game built with Godot.
+A mobile-first Phaser 3 arcade game boilerplate built with TypeScript and Vite.
 
-Balls continuously fall from the sky while the player dodges dangerous objects, catches score pickups, and survives increasingly chaotic gameplay. Designed with minimalist visuals, responsive controls, and addictive retry-based gameplay loops.
-
-## Features
-
-- Endless arcade gameplay
-- Increasing difficulty over time
-- Combo and score system
-- Multiple falling object types
-- Fast restart loop
-- Mobile-first controls
-- Neon-inspired visual style
-- Lightweight and optimized for Android
+The project starts with a portrait 1080x1920 game canvas, dark background, mobile-friendly scaling, and a basic playable scene with a horizontally movable paddle at the bottom of the screen.
 
 ## Tech Stack
 
-- Godot 4
-- GDScript
-- Android Export
+- Phaser 3
+- TypeScript
+- Vite
 
-## Gameplay Loop
+## Project Structure
 
-1. Move left and right to survive
-2. Catch good objects
-3. Avoid dangerous objects
-4. Build combos for higher scores
-5. Survive as long as possible
-6. Retry instantly after death
+```text
+src/
+  assets/        Static game assets such as sprites, audio, and atlases
+  game/          Shared Phaser configuration and game-level constants
+  scenes/        Phaser scenes and scene-specific gameplay code
+  main.ts        Browser entry point that creates the Phaser game instance
+```
 
-## Development Goals
+## Setup
 
-- Small and polished scope
-- Fast iteration cycle
-- Play Store release focused
-- Smooth 60 FPS mobile gameplay
-- Highly replayable arcade experience
+Install dependencies:
 
-## Status
+```bash
+npm install
+```
 
-Currently in active development.
+Start the development server:
+
+```bash
+npm run dev
+```
+
+Create a production build:
+
+```bash
+npm run build
+```
+
+Preview the production build:
+
+```bash
+npm run preview
+```
+
+## Gameplay Prototype
+
+- The player paddle sits near the bottom of the portrait play area.
+- Move the pointer horizontally with mouse or touch to control the paddle.
+- The `GameScene` includes the core Phaser lifecycle methods (`preload`, `create`, and `update`) so future falling objects, scoring, collision, and difficulty systems can be added cleanly.
