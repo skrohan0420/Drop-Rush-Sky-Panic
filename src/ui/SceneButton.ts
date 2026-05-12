@@ -24,12 +24,26 @@ export class SceneButton extends Phaser.GameObjects.Container {
     this.setInteractive(new Phaser.Geom.Rectangle(-width / 2, -43, width, 86), Phaser.Geom.Rectangle.Contains);
     this.setDepth(80);
 
-    // Touch devices fire bogus/overlapping hover events; keep feedback to press/release only.
-    this.on(Phaser.Input.Events.POINTER_DOWN, () => this.setScale(0.96));
-    this.on(Phaser.Input.Events.POINTER_UP, () => {
-      this.setScale(1);
+    // Android WebViews often emit POINTER_UP_OUTSIDE after a tiny finger slip; if the action only
+    // ran on POINTER_UP, taps felt broken. Fire on POINTER_DOWN (with a short cooldown) so menus
+    // stay reliable on touch, while still animating on press/release.
+    let lastActivateAt = 0;
+    const activate = (): void => {
+      const now = scene.time.now;
+
+      if (now - lastActivateAt < 140) {
+        return;
+      }
+
+      lastActivateAt = now;
       onClick();
+    };
+
+    this.on(Phaser.Input.Events.POINTER_DOWN, () => {
+      this.setScale(0.96);
+      activate();
     });
+    this.on(Phaser.Input.Events.POINTER_UP, () => this.setScale(1));
     this.on(Phaser.Input.Events.POINTER_UP_OUTSIDE, () => this.setScale(1));
 
     scene.add.existing(this);

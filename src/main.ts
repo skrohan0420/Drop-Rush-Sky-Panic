@@ -16,3 +16,17 @@ if (typeof window !== 'undefined' && window.visualViewport) {
   window.visualViewport.addEventListener('resize', refreshGameScale);
   window.visualViewport.addEventListener('scroll', refreshGameScale);
 }
+
+// Capacitor / Android WebView often finishes layout after the first frame; refresh again so FIT
+// scaling and pointer→world mapping match the real viewport (fixes stray letterboxing and touches).
+window.addEventListener('load', refreshGameScale);
+window.addEventListener('focus', refreshGameScale);
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) {
+    refreshGameScale();
+  }
+});
+
+requestAnimationFrame(refreshGameScale);
+window.setTimeout(refreshGameScale, 120);
+window.setTimeout(refreshGameScale, 380);

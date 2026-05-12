@@ -10,12 +10,25 @@
     <title>Drop Rush: Sky Panic</title>
     <style>
       html,
-      body,
-      #app {
+      body {
         width: 100%;
         height: 100%;
+        height: 100dvh;
         margin: 0;
         overflow: hidden;
+        background: #05070d !important;
+      }
+
+      /* Inset the game from display cutouts so FIT + Phaser pointers match what the user sees. */
+      #app {
+        box-sizing: border-box;
+        width: 100%;
+        height: 100%;
+        height: 100dvh;
+        margin: 0;
+        overflow: hidden;
+        padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px)
+          env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px);
         background: #05070d !important;
       }
 

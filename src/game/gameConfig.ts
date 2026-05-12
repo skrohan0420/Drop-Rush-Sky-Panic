@@ -23,6 +23,7 @@ export const gameConfig: Phaser.Types.Core.GameConfig = {
     // or safe area changes; FIT maps touches to the canvas reliably.
     mode: Phaser.Scale.FIT,
     autoCenter: Phaser.Scale.CENTER_BOTH,
+    autoRound: true,
     width: GAME_WIDTH,
     height: GAME_HEIGHT,
   },

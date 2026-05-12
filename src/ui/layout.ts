@@ -15,8 +15,13 @@ export type SafeArea = {
 export function getSafeArea(scene: Phaser.Scene, padding = 48): SafeArea {
   const parent = scene.scale.parentSize;
   const display = scene.scale.displaySize;
-  const visibleWidth = GAME_WIDTH * (parent.width / display.width);
-  const visibleHeight = GAME_HEIGHT * (parent.height / display.height);
+  // Android WebView can briefly report 0×0 before layout; avoid NaNs that break bounds and input.
+  const dw = Math.max(1, display.width);
+  const dh = Math.max(1, display.height);
+  const pw = Math.max(1, parent.width);
+  const ph = Math.max(1, parent.height);
+  const visibleWidth = GAME_WIDTH * (pw / dw);
+  const visibleHeight = GAME_HEIGHT * (ph / dh);
   const left = Math.max(0, (GAME_WIDTH - visibleWidth) / 2) + padding;
   const top = Math.max(0, (GAME_HEIGHT - visibleHeight) / 2) + padding;
   const right = Math.min(GAME_WIDTH, left + visibleWidth - padding * 2);
