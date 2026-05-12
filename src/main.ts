@@ -9,8 +9,16 @@ const refreshGameScale = (): void => {
   game.scale.refresh();
 };
 
+game.events.once(Phaser.Core.Events.READY, () => {
+  refreshGameScale();
+});
+
 window.addEventListener('resize', refreshGameScale);
 window.addEventListener('orientationchange', refreshGameScale);
+
+if (typeof window !== 'undefined' && window.screen?.orientation) {
+  window.screen.orientation.addEventListener('change', refreshGameScale);
+}
 
 if (typeof window !== 'undefined' && window.visualViewport) {
   window.visualViewport.addEventListener('resize', refreshGameScale);

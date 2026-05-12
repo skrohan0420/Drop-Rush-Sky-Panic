@@ -24,6 +24,10 @@ export const gameConfig: Phaser.Types.Core.GameConfig = {
     mode: Phaser.Scale.FIT,
     autoCenter: Phaser.Scale.CENTER_BOTH,
     autoRound: true,
+    // Default is 500ms — WebView layout can settle late; faster checks fix wrong aspect & touch mapping.
+    resizeInterval: 100,
+    // Let ScaleManager expand parent/body to 100% height so #app reliably fills the WebView.
+    expandParent: true,
     width: GAME_WIDTH,
     height: GAME_HEIGHT,
   },
@@ -40,5 +44,7 @@ export const gameConfig: Phaser.Types.Core.GameConfig = {
   input: {
     // One finger for paddle + UI; extra pointers can confuse hit testing on some devices.
     activePointers: 1,
+    // preventDefault on touch so the WebView does not steal gestures (scroll/zoom) from the canvas.
+    touch: { capture: true },
   },
 };
