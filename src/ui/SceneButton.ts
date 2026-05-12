@@ -24,13 +24,13 @@ export class SceneButton extends Phaser.GameObjects.Container {
     this.setInteractive(new Phaser.Geom.Rectangle(-width / 2, -43, width, 86), Phaser.Geom.Rectangle.Contains);
     this.setDepth(80);
 
-    this.on(Phaser.Input.Events.POINTER_OVER, () => this.setScale(1.03));
-    this.on(Phaser.Input.Events.POINTER_OUT, () => this.setScale(1));
+    // Touch devices fire bogus/overlapping hover events; keep feedback to press/release only.
     this.on(Phaser.Input.Events.POINTER_DOWN, () => this.setScale(0.96));
     this.on(Phaser.Input.Events.POINTER_UP, () => {
-      this.setScale(1.03);
+      this.setScale(1);
       onClick();
     });
+    this.on(Phaser.Input.Events.POINTER_UP_OUTSIDE, () => this.setScale(1));
 
     scene.add.existing(this);
   }

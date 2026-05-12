@@ -18,9 +18,10 @@ export const gameConfig: Phaser.Types.Core.GameConfig = {
   height: GAME_HEIGHT,
   scene: [MainMenuScene, GameScene, GameOverScene, SettingsScene, StatsScene],
   scale: {
-    // ENVELOP fills tall phones instead of letterboxing. Scene UI uses a
-    // safe-area helper so important controls stay inside the visible crop.
-    mode: Phaser.Scale.ENVELOP,
+    // FIT keeps the full game world on screen with letterboxing. On Android
+    // WebViews, ENVELOP often misaligns pointer coordinates when the viewport
+    // or safe area changes; FIT maps touches to the canvas reliably.
+    mode: Phaser.Scale.FIT,
     autoCenter: Phaser.Scale.CENTER_BOTH,
     width: GAME_WIDTH,
     height: GAME_HEIGHT,
@@ -36,6 +37,7 @@ export const gameConfig: Phaser.Types.Core.GameConfig = {
     },
   },
   input: {
-    activePointers: 2,
+    // One finger for paddle + UI; extra pointers can confuse hit testing on some devices.
+    activePointers: 1,
   },
 };

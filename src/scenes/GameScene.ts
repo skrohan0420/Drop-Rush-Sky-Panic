@@ -344,7 +344,7 @@ export class GameScene extends Phaser.Scene {
         return;
       }
 
-      this.targetX = pointer.x;
+      this.targetX = pointer.worldX;
     });
 
     this.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
@@ -352,7 +352,7 @@ export class GameScene extends Phaser.Scene {
         return;
       }
 
-      this.targetX = pointer.x;
+      this.targetX = pointer.worldX;
     });
   }
 
