@@ -6,7 +6,12 @@ export default defineConfig({
   server: {
     host: "0.0.0.0",
     port: 5173,
-    allowedHosts: ["cristine-nonsubordinate-stevie.ngrok-free.dev"],
+    // Capacitor live reload hits Vite via your LAN IP; allow non-localhost Host headers.
+    allowedHosts: true,
+    strictPort: true,
+    hmr: {
+      clientPort: 5173,
+    },
   },
   preview: {
     host: "0.0.0.0",
